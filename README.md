@@ -1,29 +1,44 @@
-# TSB PRODUCTION
+# TSB PRODUCTION — MVP2
 
-A Django / SQLite MVP for thermal-system production monitoring. Four server-rendered screens: Shop Floor, Control End, Line Metrics, and AI Analytics (Coming Soon / On Hold). No authentication or front-end build pipeline.
+A responsive production-monitoring dashboard made with **HTML, CSS and vanilla JavaScript**. No Python server, framework, package installation or build step is required. Chart.js is bundled locally. All runtime assets are served from this project, with no CDN dependency.
 
-## Run locally
+The Django implementation remains on branch **MVP1**. This branch, **MVP2**, is the static implementation prepared for Vercel.
 
-Python 3.12 recommended (Django 5.2 supports Python 3.10+).
+## View locally
+
+Serve the `public` directory with any static HTTP server. For example, if Python is available:
 
 ```sh
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_demo
-python manage.py runserver 0.0.0.0:8000
+python -m http.server 8080 --directory public
 ```
 
-Open the server in your browser. The default report is **October 2026**. Select product and model to enable Control End saves. Seeding is deterministic and safe to repeat: it creates missing demo records without overwriting existing operator entries. Start with a fresh database to regenerate the exact original dataset. `db.sqlite3` is local and ignored by Git.
+Open the server on the same machine where it runs. Opening the HTML directly with `file://` will not work because demo data is fetched as JSON. A cloud environment's loopback address is only accessible inside that environment.
 
-For other hostnames, set `DJANGO_ALLOWED_HOSTS` to a comma-separated list. `DJANGO_SECRET_KEY` and `DJANGO_DEBUG` can also be set through environment variables. Defaults are for local development. The MVP intentionally has no authentication; Control End and alert resolution are open to app users.
+## Deploy to Vercel
 
-## Data and calculations
+1. Sign in to Vercel and select **Add New → Project**.
+2. Import **MyshaZulfiqar/DashboardMVP** from GitHub.
+3. Select branch **MVP2** for the deployment. For an existing project, change its production branch to `MVP2` in Git settings if production deployments should follow this branch.
+4. Set framework preset to **Other** and keep the repository root as the Root Directory.
+5. Use **no build command** and **public** as the Output Directory. `vercel.json` already supplies these settings.
+6. Deploy, then open the HTTPS URL Vercel provides. No environment variables, database or functions are needed.
 
-Reference: **AC PROD - OCT.xlsx**, Sheet1, daily Line Off / Kanban / Actual Prod rows. Formula cells are not used as stored totals. Workbook weekday headers identify October 2026. Excel grouping is W1=1–4, W2=5–11, W3=12–18, W4=19–25, W5=26–31. Calendar grouping uses the Monday of each date's week and may include a September start date. Month displays grouped weeks, Week displays daily values for the chosen group, and Quarter displays Monday-based weekly data throughout the selected quarter. Only October has demo production; other dates have no fabricated activity.
+Alternatively, with Vercel CLI installed and authenticated, run `vercel` from the repository root for a preview, or `vercel --prod` for production. Deployment and hosting-account access are separate from the cloud development environment. This repository contains no deployment credentials.
 
-The workbook combines Hose, Tube & HVAC. For this MVP, each model baseline is allocated **40% Hose, 30% Tube, 30% HVAC**, with largest-remainder rounding. Daily quantities are deterministic synthetic distributions (seed `558046`), concentrated through October 19, rather than a claim of measured product-level production. Targets span the full month. Sundays have no planned production. Seeded quality, cycle times, machine flags, alerts and downtime are synthetic.
+## Screens
+
+- **Line Metrics:** five KPI cards, OEE breakdown, target/actual and downtime charts, weekly donuts, machine status and active/resolved alerts.
+- **Shop Floor:** large production metrics, machine-running count, progress, downtime and manual stop reasons. Refreshes every 30 seconds and syncs changes between tabs of the same origin.
+- **Control End:** validated production settings, manual machine status, alert dispatch, resolution and dated CSV downloads.
+- **AI Analytics:** Coming Soon / On Hold placeholder.
+
+Dark mode is the default; the theme toggle persists the choice. Filters scope all calculations, machines, alerts and exports. Screen navigation and filters are retained in the URL; hash routes require no server rewrites.
+
+## Data and persistence
+
+`public/data/demo.json` is the deterministic October 2026 seed exported from the MVP1 seed command, which used the uploaded **AC PROD - OCT.xlsx** as reference. A fresh browser loads all four models across Hose, Tube and HVAC on AC PROD: 12 product/model combinations and 372 daily records. No separate seed command is necessary: deploy the JSON file with the site.
+
+Workbook figures combine all three products. Demo quantities are split 40% Hose / 30% Tube / 30% HVAC using largest-remainder rounding. Daily demo activity is concentrated through October 19, generated with fixed seed 558046 in the original seed generator. Quality, downtime, cycle times, alerts and machine status are synthetic. All dashboard totals are recomputed from daily records; unresolved workbook formulas are not copied.
 
 | Model | OEM / Line Off | Opening | Good production | Delivered | FG | Backlog |
 |---|---:|---:|---:|---:|---:|---:|
@@ -32,31 +47,38 @@ The workbook combines Hose, Tube & HVAC. For this MVP, each model baseline is al
 | 481D | 660 | 180 | 540 | 450 | 270 | 210 |
 | 164D | 210 | 70 | 110 | 130 | 50 | 80 |
 
-Production KPI shows good units plus a separate rejection count; the Production donut includes both good and rejected units. Rejections are additional synthetic scrap. All displayed production, delivery, downtime and chart totals are aggregated from daily records. FG = opening + good − delivered. Backlog = max(OEM − delivered, 0). Workbook stock coverage = (good + opening) / Line Off. Attainment = good / production target. Zero denominators display 0%.
+**This is a static, browser-local MVP.** Control settings and alerts persist in `localStorage` on that browser and site origin. They are not shared between users, devices, Vercel preview URLs, or production domains. Clearing site data resets the demo. If storage is blocked or full, saves fail visibly. No credentials or authentication are used. There is no server-side validation or shared database in this version; input validation is performed in JavaScript and native HTML forms. Add an API and shared storage before using it for plant-wide live data.
 
-OEE uses aggregate weighted factors: Availability = operating minutes / planned minutes; Performance = ideal cycle minutes for all produced parts / operating minutes (capped at 100%); Quality = good / (good + rejected). OEE = Availability × Performance × Quality. Downtime is cumulative machine minutes, so parallel machines' downtime adds together. Predicted downtime is a synthetic baseline, not an AI forecast.
+Every operator save retains an audit entry with timestamp. Production CSV contains daily rows and separate operator audit rows: do not sum audit rows as additional production. CSVs include full date/time in Asia/Karachi (UTC+05); free-text formula prefixes are escaped.
 
-Donuts preserve every week, including W5. Production/Good include remaining target; Delivered includes remaining OEM; Backlog shows each week's unmet dispatch target. The Backlog KPI is the authoritative monthly OEM backlog, which can differ from summed weekly dispatch shortfalls.
+Daily Control End fields apply to the latest populated production day in the chosen month, shown above the form, or the first day of an empty month. Opening stock and OEM are monthly. Alerts store the reporting month separately from their actual entry timestamp. Machine state is current and manual, independent of the historical report month. Running/status must agree; stopped machines require a reason. Last stop time and reason persist after restart. Machine flags do not fabricate historical downtime.
 
-## Operator workflow
+## Calculations and week grouping
 
-The top filters scope all reports, charts, machines, alerts and exports. Control End requires a single product/model combination. Daily Line Off, target and Kanban edits apply to the latest populated production date in the selected month (or its first day for a new month); opening stock and OEM apply to the whole selected month. Every save creates an immutable timestamped audit entry. The production CSV includes daily snapshots **and** operator audit rows, distinguished by entry type; audit rows must not be summed as extra production.
+- FG = opening + good − delivered; backlog = max(OEM − delivered, 0).
+- Stock coverage = (good + opening) / Line Off; attainment = good / production target.
+- Availability = operating minutes / planned minutes.
+- Performance = ideal cycle minutes for good + rejected units / operating minutes, capped at 100%.
+- Quality = good / (good + rejected). OEE = Availability × Performance × Quality. Zero denominators show 0%.
+- Machine downtime is summed across machines, including concurrent downtime. Predicted downtime is a demo baseline.
+- Excel W1=Oct 1–4, W2=5–11, W3=12–18, W4=19–25, W5=26–31. Calendar weeks run Monday–Sunday; labels show their Monday date. Week view shows individual days in the selected week; quarter shows Monday-based weekly values in the selected quarter. Only October has seeded activity.
+- Production donut includes good + rejected. Production/Good donuts include remaining target; Delivered includes remaining OEM; Backlog donut shows weekly dispatch shortfalls. The monthly backlog KPI is OEM minus delivered and can differ from summed weekly shortfalls. Every week, including W5, is retained.
 
-Machine running/status/reason are current manual operator values, independent of report history. A stop requires a reason and consistent running/status inputs. Last stop time and reason persist after restart. Stop flags do not fabricate historical downtime minutes. Historical downtime comes from daily records; `IoTIngestion` is the future ingestion hook. Shop Floor polls every 30 seconds and indicates refresh failures. It displays selected-month totals to keep the October demo useful outside October.
+## Maintainable structure
 
-Alerts retain their selected reporting month separately from their actual entry timestamp. Active/resolved lists and CSVs are scoped to that reporting month. Timestamps and CSV time columns use Asia/Karachi (UTC+05). CSV exports escape spreadsheet formula prefixes in free-text fields.
+```text
+public/
+  index.html                  Semantic shell and global filter/navigation bar
+  assets/app.css              Responsive dark/light styling
+  assets/app.js               Reusable UI renderers, forms and chart components
+  assets/data.js              Repository, aggregation service, persistence and IoT stub
+  assets/vendor/              Chart.js 4.4.8, upstream license notice retained
+  data/demo.json              Deterministic initial data
+vercel.json                   Static hosting and security headers
+```
 
-## Structure and future lines
+The data relationships remain **Line → Product → Model**, with model-keyed monthly plans, daily records, machines and alerts. Add HE PROD or EC PROD entries and their products/models/records in the data source; existing filtering and views work with the same schema. Replace `ProductionRepository` and the service data operations with a remote API adapter when shared persistence is needed. The `IoTIngestion` interface marks the future sensor input path. Templates/renderers need no framework or separate build pipeline.
 
-- `dashboard/models.py`: Line → Product → ProductionModel, monthly plans, daily production, machine state, alerts and control audit log.
-- `dashboard/services.py`: repository and application-service boundary; filtering, aggregation, writes and IoT hook. Views use the service API.
-- `dashboard/forms.py`: server-side validation.
-- `dashboard/templates/dashboard/partials/`: reusable filters, KPI cards, charts and alert list.
-- `dashboard/static/dashboard/`: responsive dark/light styling and minimal JavaScript.
-- Chart.js 4.4.8 is requested from jsDelivr; a bundled copy from that same version provides a local fallback. Its upstream license notice is retained in the file. No network is needed for fallback charts.
+## Validation
 
-Add **HE PROD** and **EC PROD** as new `Line` records, then attach Products, ProductionModels, MonthlyPlans, daily records and Machines using the same relationships. No schema restructuring is needed. Replace repository access for an external store, or implement `IoTIngestion.ingest(machine_id, event_time, payload)` with validated identity, timestamp and idempotency handling. Persist source=`iot` for sensor-backed machine state; templates need no change.
-
-## Validation performed
-
-Django system checks, migration and repeated seeding; baseline reconciliation for all four models; all screens, JSON endpoint and CSV responses; server-side negative-input rejection; operator save/audit, dispatch and resolution (validation changes rolled back). Chromium checked all seven charts, Shop Floor polling, dark/light themes, and responsive layouts. No automated test suite was added, as requested.
+Browser smoke checks cover navigation, all seven charts, baseline totals, local save/reload, alerts and resolution, CSV download, theme switching, and responsive layouts. No automated test suite or build tooling is added.

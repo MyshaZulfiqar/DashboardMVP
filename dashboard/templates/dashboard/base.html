@@ -1,9 +1,0 @@
-{% load static %}<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title }} · TSB PRODUCTION</title><link rel="stylesheet" href="{% static 'dashboard/app.css' %}"><script>document.documentElement.dataset.theme=localStorage.getItem('theme')||'dark';</script><script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script><script defer src="{% static 'dashboard/app.js' %}"></script></head>
-<body data-screen="{{ screen }}" data-api="{% url 'metrics' %}?{{ query }}"><header><a class="brand" href="{% url 'home' %}"><span class="brand-mark">▥</span><span>TSB <b>PRODUCTION</b><small>THERMAL SYSTEMS · OPERATIONS</small></span></a><div class="header-right"><span class="demo-badge">DEMO WORKSPACE</span><button id="theme" type="button" aria-label="Toggle light and dark theme">◐ <span>Theme</span></button></div></header>
-<nav>{% for slug,label in screens.items %}<a class="{% if screen == slug %}selected{% endif %}" href="{% url 'page' slug %}?{{ query }}">{{ label }}</a>{% endfor %}<span class="nav-note">AC / Production intelligence</span></nav>
-<main><div class="page-heading"><div><p class="eyebrow">OPERATIONS OVERVIEW</p><h1>{{ title }}</h1></div><div class="updated">● <span id="updated">Updated {{ s.updated|slice:':19' }}</span><small>Pakistan Standard Time · UTC+05</small></div></div>
-{% include 'dashboard/partials/filters.html' %}
-{% for message in messages %}<div class="message" role="status">{{ message }}</div>{% endfor %}
-{% block content %}{% endblock %}
-<footer>TSB PRODUCTION <span>October 2026 demo · Operator manual status · Synthetic quality & downtime</span></footer></main></body></html>
