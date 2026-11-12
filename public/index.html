@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1117">
+  <meta name="description" content="TSB Production — thermal systems production dashboard">
+  <title>TSB PRODUCTION</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script defer src="/assets/vendor/chart.umd.min.js"></script>
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="#line-metrics"><span class="brand-mark" aria-hidden="true">▥</span><span>TSB <b>PRODUCTION</b><small>THERMAL SYSTEMS · OPERATIONS</small></span></a>
+    <div class="header-right"><span class="demo-badge">DEMO WORKSPACE</span><button id="theme" type="button" aria-label="Toggle light and dark theme">◐ <span>Theme</span></button></div>
+  </header>
+  <nav aria-label="Main navigation">
+    <a href="#shop-floor">Shop Floor</a><a href="#control-end">Control End</a><a href="#line-metrics">Line Metrics</a><a href="#ai-analytics">AI Analytics</a>
+    <span class="nav-note">Production intelligence</span>
+  </nav>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">OPERATIONS OVERVIEW</p><h1 id="page-title">Line Metrics</h1></div><div class="updated">● <span id="updated">Loading data…</span><small>Pakistan Standard Time · UTC+05</small></div></div>
+    <form class="filters" id="filters">
+      <label>Line<select name="line" aria-label="Line"></select></label>
+      <label>Product<select name="product" aria-label="Product"></select></label>
+      <label>Model<select name="model" aria-label="Model"></select></label>
+      <label>Reporting month<input type="month" name="month" value="2026-10" required></label>
+      <label class="metrics-filter">View<select name="period"><option value="month">Month</option><option value="quarter">Quarter</option><option value="week">Week</option></select></label>
+      <label class="metrics-filter">Week grouping<select name="grouping"><option value="excel">Excel W1–W5</option><option value="calendar">Calendar Mon–Sun</option></select></label>
+      <label class="metrics-filter">Week<select name="week"><option value="1">W1</option><option value="2">W2</option><option value="3">W3</option><option value="4">W4</option><option value="5">W5</option><option value="6">W6</option></select></label>
+      <button class="primary">Apply filters ↗</button>
+    </form>
+    <p class="storage-note" id="storage-note">Demo mode · Changes are saved in this browser only and are not shared between devices.</p>
+    <div id="message" role="status" aria-live="polite" hidden></div>
+    <div id="content"><section class="panel"><p>Loading October production data…</p></section></div>
+    <footer>TSB PRODUCTION <span>October 2026 demo · Manual machine status · Synthetic quality & downtime</span></footer>
+  </main>
+  <noscript>This dashboard requires JavaScript to display production data.</noscript>
+</body>
+</html>
