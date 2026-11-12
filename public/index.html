@@ -26,16 +26,16 @@
       <label>Line<select name="line" aria-label="Line"></select></label>
       <label>Product<select name="product" aria-label="Product"></select></label>
       <label>Model<select name="model" aria-label="Model"></select></label>
-      <label>Reporting month<input type="month" name="month" value="2026-10" required></label>
+      <label>Reporting month<input type="month" name="month" min="2026-01" max="2026-10" value="2026-10" required></label>
       <label class="metrics-filter">View<select name="period"><option value="month">Month</option><option value="quarter">Quarter</option><option value="week">Week</option></select></label>
-      <label class="metrics-filter">Week grouping<select name="grouping"><option value="excel">Excel W1–W5</option><option value="calendar">Calendar Mon–Sun</option></select></label>
+      <label class="metrics-filter">Week grouping<select name="grouping"><option value="excel">Workbook W1–W6</option><option value="calendar">Calendar Mon–Sun</option></select></label>
       <label class="metrics-filter">Week<select name="week"><option value="1">W1</option><option value="2">W2</option><option value="3">W3</option><option value="4">W4</option><option value="5">W5</option><option value="6">W6</option></select></label>
       <button class="primary">Apply filters ↗</button>
     </form>
-    <p class="storage-note" id="storage-note">Demo mode · Changes are saved in this browser only and are not shared between devices.</p>
+    <p class="storage-note" id="storage-note">Jan–Oct 2026 workbook · Combined product totals · Changes are saved in this browser only. Previous October-only demo entries are retained separately and do not overwrite this workbook.</p>
     <div id="message" role="status" aria-live="polite" hidden></div>
-    <div id="content"><section class="panel"><p>Loading October production data…</p></section></div>
-    <footer>TSB PRODUCTION <span>October 2026 demo · Manual machine status · Synthetic quality & downtime</span></footer>
+    <div id="content"><section class="panel"><p>Loading January–October production data…</p></section></div>
+    <footer>TSB PRODUCTION <span>Jan–Oct 2026 workbook · 80% assumed efficiency · Missing inputs: TBD</span></footer>
   </main>
   <noscript>This dashboard requires JavaScript to display production data.</noscript>
 </body>

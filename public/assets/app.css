@@ -2,3 +2,5 @@
 
 .charts-column,.main-charts>*,.donut-grid>*,.metrics-layout>*{min-width:0}canvas{max-width:100%}
 [hidden]{display:none!important}.storage-note{font-size:11px;color:var(--muted);line-height:1.6;margin:-8px 0 22px}fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.5}.download{width:100%;text-align:left;background:var(--surface)}.message.error{border-color:var(--red);color:var(--red)}.production-status p.red{color:var(--red)}.production-status p.green{color:var(--green)}
+
+.chart-placeholder{min-height:200px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:var(--muted);padding:20px}.chart-placeholder strong{font-size:14px}.chart-placeholder p{font-size:12px;line-height:1.7}.kpi-value{overflow-wrap:anywhere}.kpi small{overflow-wrap:anywhere}

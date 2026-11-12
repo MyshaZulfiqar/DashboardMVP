@@ -34,35 +34,52 @@ Alternatively, with Vercel CLI installed and authenticated, run `vercel` from th
 
 Dark mode is the default; the theme toggle persists the choice. Filters scope all calculations, machines, alerts and exports. Screen navigation and filters are retained in the URL; hash routes require no server rewrites.
 
-## Data and persistence
+## Workbook data and persistence
 
-`public/data/demo.json` is the deterministic October 2026 seed exported from the MVP1 seed command, which used the uploaded **AC PROD - OCT.xlsx** as reference. A fresh browser loads all four models across Hose, Tube and HVAC on AC PROD: 12 product/model combinations and 372 daily records. No separate seed command is necessary: deploy the JSON file with the site.
+The dashboard now reads **January–October 2026** from the populated `AC_PROD_JAN_OCT_Dummy_80pct.xlsx` workbook. There are **40 monthly plans** and **1,216 daily records** across models 558D, 046D, 481D and 164D. All monthly values, dispatch quantities, inventory and weekly groups are imported from the workbook; the old October-only synthetic dataset is replaced.
 
-Workbook figures combine all three products. Demo quantities are split 40% Hose / 30% Tube / 30% HVAC using largest-remainder rounding. Daily demo activity is concentrated through October 19, generated with fixed seed 558046 in the original seed generator. Quality, downtime, cycle times, alerts and machine status are synthetic. All dashboard totals are recomputed from daily records; unresolved workbook formulas are not copied.
+The source is retained in `data/AC_PROD_JAN_OCT_Dummy_80pct.xlsx`. An optional development-only importer regenerates the deployed JSON:
 
-| Model | OEM / Line Off | Opening | Good production | Delivered | FG | Backlog |
-|---|---:|---:|---:|---:|---:|---:|
-| 558D | 1,480 | 70 | 1,020 | 840 | 250 | 640 |
-| 046D | 2,510 | 230 | 1,600 | 1,350 | 480 | 1,160 |
-| 481D | 660 | 180 | 540 | 450 | 270 | 210 |
-| 164D | 210 | 70 | 110 | 130 | 50 | 80 |
+```sh
+python -m pip install openpyxl
+python scripts/import_workbook.py
+```
 
-**This is a static, browser-local MVP.** Control settings and alerts persist in `localStorage` on that browser and site origin. They are not shared between users, devices, Vercel preview URLs, or production domains. Clearing site data resets the demo. If storage is blocked or full, saves fail visibly. No credentials or authentication are used. There is no server-side validation or shared database in this version; input validation is performed in JavaScript and native HTML forms. Add an API and shared storage before using it for plant-wide live data.
+Serving or deploying the site still requires **no Python or dependencies**. The committed JSON is the first-run seed. Use Excel/LibreOffice to recalculate and save formulas before re-importing; the importer reads cached workbook results.
 
-Every operator save retains an audit entry with timestamp. Production CSV contains daily rows and separate operator audit rows: do not sum audit rows as additional production. CSVs include full date/time in Asia/Karachi (UTC+05); free-text formula prefixes are escaped.
+| Month (2026) | Line Off / Target | Actual production |
+|---|---:|---:|
+| January | 4,375 | 3,500 |
+| February | 4,615 | 3,692 |
+| March | 5,105 | 4,084 |
+| April | 4,860 | 3,888 |
+| May | 5,345 | 4,276 |
+| June | 4,760 | 3,808 |
+| July | 5,155 | 4,124 |
+| August | 5,445 | 4,356 |
+| September | 5,005 | 4,004 |
+| October | 4,860 | 3,888 |
 
-Daily Control End fields apply to the latest populated production day in the chosen month, shown above the form, or the first day of an empty month. Opening stock and OEM are monthly. Alerts store the reporting month separately from their actual entry timestamp. Machine state is current and manual, independent of the historical report month. Running/status must agree; stopped machines require a reason. Last stop time and reason persist after restart. Machine flags do not fabricate historical downtime.
+Actual production is exactly **80% of Line Off** for every imported model/month. The separate **Overall Efficiency** value is explicitly labeled **assumed**, not measured OEE. OEE, Availability, Performance, Quality, good/rejected quantities, downtime, predicted downtime, machine inventory, running flags, stop details and historical alerts were not supplied; they remain **TBD**, not zero or invented data. Downtime and quality chart containers show placeholders instead of misleading charts. Original entry timestamps are also TBD; workbook dates remain available in exports.
 
-## Calculations and week grouping
+Hose, Tube & HVAC are combined in the source. The product filter therefore offers the combined group rather than inventing individual-product quantities. Model and line filtering still work. Future individual products can be added with actual product-level records.
 
-- FG = opening + good − delivered; backlog = max(OEM − delivered, 0).
-- Stock coverage = (good + opening) / Line Off; attainment = good / production target.
-- Availability = operating minutes / planned minutes.
-- Performance = ideal cycle minutes for good + rejected units / operating minutes, capped at 100%.
-- Quality = good / (good + rejected). OEE = Availability × Performance × Quality. Zero denominators show 0%.
-- Machine downtime is summed across machines, including concurrent downtime. Predicted downtime is a demo baseline.
-- Excel W1=Oct 1–4, W2=5–11, W3=12–18, W4=19–25, W5=26–31. Calendar weeks run Monday–Sunday; labels show their Monday date. Week view shows individual days in the selected week; quarter shows Monday-based weekly values in the selected quarter. Only October has seeded activity.
-- Production donut includes good + rejected. Production/Good donuts include remaining target; Delivered includes remaining OEM; Backlog donut shows weekly dispatch shortfalls. The monthly backlog KPI is OEM minus delivered and can differ from summed weekly shortfalls. Every week, including W5, is retained.
+**Persistence is browser-local.** Control settings and alerts use `localStorage`; they are not shared between users, devices, preview URLs or production domains. The workbook dataset has its own versioned storage key. Previous October-only demo entries are retained under the old key and cannot override the new seed. Clearing site data resets the demo. Blocked/full storage produces a visible save error. No authentication or server-side database is included.
+
+Control End saves apply to the latest populated production day in the selected **month**, explicitly shown on the form, even when the report is in quarter/week view. Monthly opening/OEM entries affect that month. Kanban also updates Delivered, following the workbook relationship; resulting closing stock carries forward through later seeded months. Operator entries have actual timestamps and audit records. Machine status begins TBD and is only created when the operator chooses a known status. Stop reason is required when stopped. The live status panel counts reported operator stations, not an inferred plant machine inventory.
+
+CSV exports follow the chosen period and filters. Daily rows and operator audit rows are separate entry types; audit rows must not be summed as extra production. Unknown fields export as `TBD`. User entry timestamps use Asia/Karachi (UTC+05); no timestamp is invented for source rows. Formula prefixes in free-text CSV fields are escaped.
+
+## Calculations and periods
+
+- FG = opening + actual production − delivered; backlog = max(OEM − delivered, 0).
+- Stock coverage = (actual + opening) / Line Off. This retains the workbook formula and can differ from the 80% assumption.
+- Attainment = actual production / production target. It can change after an operator edits the plan; the scenario assumption remains labeled separately.
+- OEE is only computed when all required operating-time, cycle-time and quality inputs are known: Availability × Performance × Quality. Until then it is TBD.
+- Workbook weeks follow Monday–Sunday, including partial first/last weeks. Week counts are derived from each month; August has W6. Calendar grouping labels the same groups by Monday start date. Quarter charts group daily records across month boundaries by Monday date.
+- All screens, KPIs and exports follow Month / Quarter / Week. Weekly target is the sum of that week's Line Off. Weekly opening inventory includes prior movements in the month. Quarter opening is the first month's opening balance; it is never the sum of monthly opening balances. Closing inventory reconciles across months.
+- Q4 is explicitly partial (October only). November and December have no source data.
+- Production/Delivered/Backlog donuts use available weekly quantities. Production includes remaining target; Delivered includes remaining OEM. Backlog donut shows weekly dispatch shortfalls, which may differ from the monthly net-backlog KPI.
 
 ## Maintainable structure
 
@@ -73,7 +90,7 @@ public/
   assets/app.js               Reusable UI renderers, forms and chart components
   assets/data.js              Repository, aggregation service, persistence and IoT stub
   assets/vendor/              Chart.js 4.4.8, upstream license notice retained
-  data/demo.json              Deterministic initial data
+  data/demo.json              Workbook-derived Jan–Oct initial data
 vercel.json                   Static hosting and security headers
 ```
 
@@ -81,4 +98,4 @@ The data relationships remain **Line → Product → Model**, with model-keyed m
 
 ## Validation
 
-Browser smoke checks cover navigation, all seven charts, baseline totals, local save/reload, alerts and resolution, CSV download, theme switching, and responsive layouts. No automated test suite or build tooling is added.
+Validation reconciles all 40 model/months and monthly aggregates with the populated workbook, including stock carry-forward, 80% attainment, quarter balances and August W6. Browser smoke checks cover navigation, available charts and missing-data placeholders, period filters, operator saves, alerts, exports and responsive layouts. No automated test suite or build tooling is added.
