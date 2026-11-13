@@ -146,6 +146,17 @@ export class ProductionService {
     series.backlog=labels.map(label=>Math.max(0,sum(buckets.get(label),'target')-sum(buckets.get(label),'delivered')));
     return {labels,series};
   }
+  floorSnapshot(now = new Date()) {
+    const date=plantDate(now);
+    const assignment=this.data.floor_display;
+    // The floor never queries historical reports or takes its identity from URL filters.
+    // An IoT adapter will supply date/model-scoped measurements here in a future release.
+    return {date,identity:assignment?.identity||null,
+      target:assignment?.date===date?assignment.target:null,
+      configured_today:assignment?.date===date,
+      published_at:assignment?.updated_at||null,
+      production:null,downtime_minutes:null,oee:null};
+  }
   controlInitial(filters) {
     const model = this.models(filters)[0];
     if (!model || this.models(filters).length !== 1) return null;
@@ -153,7 +164,9 @@ export class ProductionService {
     const row = rows.filter(r=>r.actual>0).at(-1) || rows[0];
     const plan = this.data.plans.find(p=>p.model_id===model.id && p.month.startsWith(filters.month));
     const machine = this.machines(filters)[0];
-    return {target:row?.target||0, line_off:row?.line_off||0, kanban:row?.kanban||0, opening_stock:plan?.opening_stock||0,
+    const assignment=this.data.floor_display;
+    const floorTarget=assignment?.date===plantDate()&&assignment.model_id===model.id?assignment.target:0;
+    return {target:floorTarget, line_off:row?.line_off||0, kanban:row?.kanban||0, opening_stock:plan?.opening_stock||0,
       oem_requirement:plan?.oem_requirement||0, status:machine?.status||'unknown', running:machine?.running??null, stop_reason:machine?.stop_reason||'', effective_date:row?.date||`${filters.month}-01`};
   }
   saveControl(filters, values) {
@@ -174,7 +187,7 @@ export class ProductionService {
         row={id:crypto.randomUUID(),model_id:modelId,date:effectiveDate,excel_week:Math.floor((day-1+(new Date(`${filters.month}-01T00:00:00Z`).getUTCDay()+6)%7)/7)+1,target:0,line_off:0,kanban:0,actual:0,good:null,rejected:null,delivered:0,planned_minutes:null,downtime_minutes:null,ideal_cycle_seconds:null,predicted_downtime_minutes:null};
         state.daily.push(row);
       }
-      Object.assign(row,{target:values.target,line_off:values.line_off,kanban:values.kanban,delivered:values.kanban,recorded_at:now});
+      Object.assign(row,{line_off:values.line_off,kanban:values.kanban,delivered:values.kanban,recorded_at:now});
       let plan=state.plans.find(p=>p.model_id===modelId && p.month.startsWith(filters.month));
       if (!plan) { plan={id:crypto.randomUUID(),model_id:modelId,month:`${filters.month}-01`,assumed_efficiency:null}; state.plans.push(plan); }
       Object.assign(plan,{opening_stock:values.opening_stock,oem_requirement:values.oem_requirement,updated_at:now});
@@ -192,7 +205,8 @@ export class ProductionService {
         if (!values.running && machine.running!==false) machine.stopped_at=now;
         Object.assign(machine,{running:values.running,status:values.status,stop_reason:values.stop_reason||machine.stop_reason||'',source:'operator',updated_at:now});
       }
-      state.entries.push({id:crypto.randomUUID(),model_id:modelId,created_at:now,payload:{...values,effective_date:effectiveDate}});
+      state.floor_display={date:plantDate(),model_id:modelId,identity:this.label(modelId),target:values.target,updated_at:now};
+      state.entries.push({id:crypto.randomUUID(),model_id:modelId,created_at:now,payload:{...values,effective_date:effectiveDate,shop_floor_date:plantDate()}});
     });
   }
   saveAlert(filters, values) {
