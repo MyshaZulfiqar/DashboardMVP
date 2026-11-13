@@ -30,12 +30,21 @@ function renderFilters() {
   const productIds=products.filter(p=>!filters.product||String(p.id)===filters.product).map(p=>p.id);
   const names=[...new Set(data.models.filter(m=>productIds.includes(m.product_id)).map(m=>m.name))].sort();
   selectOptions(filtersForm.elements.model,names.map(name=>({id:name,name})),filters.model,'All models');
-  const weeks=service.weeks(filters);
-  filtersForm.elements.week.innerHTML=weeks.map(week=>`<option value="${week}">W${week}</option>`).join('');
-  filtersForm.elements.week.disabled=filters.period!=='week';
-  if (!weeks.includes(Number(filters.week))) filters.week=String(weeks[0]||1);
-  for (const field of ['month','period','grouping','week']) filtersForm.elements[field].value=filters[field];
-  document.querySelectorAll('.metrics-filter').forEach(element=>element.hidden=false);
+  const isControl=screen()==='control-end';
+  const reportFields=['month','period','grouping','week'];
+  for(const name of reportFields){
+    const input=filtersForm.elements[name];
+    input.closest('label').hidden=isControl;
+    input.disabled=isControl;
+  }
+  if(!isControl){
+    const weeks=service.weeks(filters);
+    filtersForm.elements.week.innerHTML=weeks.map(week=>`<option value="${week}">W${week}</option>`).join('');
+    filtersForm.elements.week.disabled=filters.period!=='week';
+    if(!weeks.includes(Number(filters.week)))filters.week=String(weeks[0]||1);
+    for(const field of reportFields)filtersForm.elements[field].value=filters[field];
+  }
+
 }
 function kpi(label,value,unit,details,tone='') {
   return `<article class="kpi"><p>${label}</p><div class="kpi-value ${tone}">${value}<span>${unit}</span></div>${details.map(detail=>`<small>${detail}</small>`).join('')}</article>`;
@@ -106,12 +115,14 @@ function updateFloorClock() {
   clock.textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Karachi',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now);
 }
 let displayedFloorDate=null;
+let displayedControlDate=null;
+function activeFilters(){return screen()==='control-end'?{...filters,month:plantDate().slice(0,7),date:plantDate(),period:'day'}:filters;}
 function numberInput(name,label,value) {
   return `<p><label for="${name}">${label}</label><input id="${name}" name="${name}" type="number" min="0" max="1000000000" step="1" value="${value}" required></p>`;
 }
 function controlView() {
   const selected=service.controlInitial(filters),v=selected||{status:'unknown',running:null,stop_reason:'',target:0,line_off:0,kanban:0,opening_stock:0,oem_requirement:0};
-  content.innerHTML=`<div class="control-layout"><section class="panel"><div class="panel-heading"><h2>Production controls</h2><span class="green">● Manual entry</span></div><p class="muted">Select the line, product and one model above. Set Value publishes those names and the target to Shop Floor for today in Pakistan time. Historical report filters do not control the floor display. Machine status stays TBD until entered. Kanban also updates Delivered, matching the workbook. ${selected?'Other daily report values apply to '+esc(selected.effective_date)+' in the selected month (even in quarter/week view).':'Monthly values apply to the selected reporting month.'}</p>${!selected?'<p class="notice">Choose the combined product and one model above to enable saving.</p>':''}<form id="control-form" class="entry-form"><fieldset ${!selected?'disabled':''}><p><label for="status">Select line status</label><select name="status" id="status">${['unknown','running','stopped','maintenance'].map(status=>`<option value="${status}" ${v.status===status?'selected':''}>${status==='unknown'?'TBD — not supplied':status[0].toUpperCase()+status.slice(1)}</option>`).join('')}</select></p>${numberInput('line_off','Line Off (units)',v.line_off)}${numberInput('target',"Shop Floor Target · today (units)",v.target)}${numberInput('kanban','Kanban (units)',v.kanban)}${numberInput('opening_stock','Monthly Opening Stock (units)',v.opening_stock)}${numberInput('oem_requirement','Monthly OEM Requirement (units)',v.oem_requirement)}<p><label for="running">Machine running</label><input type="checkbox" id="running" name="running" ${v.status==='unknown'?'disabled':''} ${v.running?'checked':''}></p><p><label for="stop_reason">Stop reason</label><input name="stop_reason" id="stop_reason" maxlength="200" value="${esc(v.stop_reason)}" placeholder="Required when machine is stopped"></p><button class="primary">Set Value</button></fieldset></form></section><div><section class="panel"><div class="panel-heading"><h2>Report an issue</h2><span class="badge red">Dispatch Alert</span></div><form id="alert-form" class="entry-form"><fieldset ${!selected?'disabled':''}><p><label for="alert_type">Type of Alert</label><select id="alert_type" name="alert_type">${['Production','Safety','Quality','Maintenance'].map(type=>`<option>${type}</option>`).join('')}</select></p><p><label for="area">Affected Area / Machine</label><input name="area" id="area" maxlength="100" required></p><p><label for="description">Description</label><textarea name="description" id="description" rows="3" maxlength="1000" required></textarea></p><p><label for="severity">Severity Level</label><select name="severity" id="severity"><option value="critical">Critical</option><option value="warning" selected>Warning</option><option value="info">Information</option></select></p><button class="danger">Dispatch Alert ↗</button></fieldset></form></section><section class="panel downloads"><h2>Download reports</h2><p class="muted">Filtered daily records and browser-local audit entries with full date and time.</p><button class="download" data-export="production">↓ Download Dated Production Log CSV</button><button class="download" data-export="alerts">↓ Download Dated Alert Log CSV</button></section></div></div>`;
+  content.innerHTML=`<div class="control-layout"><section class="panel"><div class="panel-heading"><h2>Production controls</h2><span class="green">● Manual entry</span></div><p class="muted">Daily controls · ${esc(plantDate())} · Pakistan Standard Time. Choose line, product and model above. Set Value saves today's line status, target, Line Off and Kanban, and publishes the names and target to Shop Floor.</p>${!selected?'<p class="notice">Choose the combined product and one model above to enable saving.</p>':''}<form id="control-form" class="entry-form"><fieldset ${!selected?'disabled':''}><p><label for="status">Select line status</label><select name="status" id="status">${['unknown','running','stopped','maintenance'].map(status=>`<option value="${status}" ${v.status===status?'selected':''}>${status==='unknown'?'TBD — not supplied':status[0].toUpperCase()+status.slice(1)}</option>`).join('')}</select></p>${numberInput('line_off','Line Off (units)',v.line_off)}${numberInput('target',"Shop Floor Target · today (units)",v.target)}${numberInput('kanban','Kanban (units)',v.kanban)}<p><label for="running">Machine running</label><input type="checkbox" id="running" name="running" ${v.status==='unknown'?'disabled':''} ${v.running?'checked':''}></p><p><label for="stop_reason">Stop reason</label><input name="stop_reason" id="stop_reason" maxlength="200" value="${esc(v.stop_reason)}" placeholder="Required when machine is stopped"></p><button class="primary">Set Value</button></fieldset></form><section class="monthly-setup"><h2>Monthly setup · ${esc(plantDate().slice(0,7))}</h2><p class="muted">${selected?.monthly_locked?'Saved once for this month. These values remain locked until the next month.':'Set opening stock and OEM requirement once for this model at the start of the month. Daily saves do not change these values.'}</p><form id="monthly-form" class="entry-form"><fieldset ${!selected||selected.monthly_locked?'disabled':''}>${numberInput('opening_stock','Monthly Opening Stock (units)',v.opening_stock)}${numberInput('oem_requirement','Monthly OEM Requirement (units)',v.oem_requirement)}<button class="primary">Save Monthly Settings</button></fieldset></form>${selected?.monthly_locked?`<small>Saved ${dateTime(selected.monthly_set_at)} · Resets next month</small>`:''}</section></section><div><section class="panel"><div class="panel-heading"><h2>Report an issue</h2><span class="badge red">Dispatch Alert</span></div><form id="alert-form" class="entry-form"><fieldset ${!selected?'disabled':''}><p><label for="alert_type">Type of Alert</label><select id="alert_type" name="alert_type">${['Production','Safety','Quality','Maintenance'].map(type=>`<option>${type}</option>`).join('')}</select></p><p><label for="area">Affected Area / Machine</label><input name="area" id="area" maxlength="100" required></p><p><label for="description">Description</label><textarea name="description" id="description" rows="3" maxlength="1000" required></textarea></p><p><label for="severity">Severity Level</label><select name="severity" id="severity"><option value="critical">Critical</option><option value="warning" selected>Warning</option><option value="info">Information</option></select></p><button class="danger">Dispatch Alert ↗</button></fieldset></form></section><section class="panel downloads"><h2>Download reports</h2><p class="muted">Filtered daily records and browser-local audit entries with full date and time.</p><button class="download" data-export="production">↓ Download Dated Production Log CSV</button><button class="download" data-export="alerts">↓ Download Dated Alert Log CSV</button></section></div></div>`;
 }
 function render() {
   while(charts.length) charts.pop().destroy();
@@ -119,6 +130,7 @@ function render() {
   const current=screen();
   const isFloor=current==='shop-floor';
   displayedFloorDate=isFloor?plantDate():null;
+  displayedControlDate=current==='control-end'?plantDate():null;
   const summary=isFloor?service.floorSnapshot():service.summary(filters);
   // Detach filter controls entirely on Shop Floor; restore the same form on reporting/control screens.
   if(isFloor)filtersForm.remove();
@@ -139,13 +151,13 @@ function saveFilters() {
 }
 function exportCSV(kind) {
   const safe=value=>{let text=String(value??'');if(/^[=+\-@\t\r]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';};
-  const csv='\uFEFF'+service.exportRows(filters,kind).map(row=>row.map(safe).join(',')).join('\r\n');
+  const csv='\uFEFF'+service.exportRows(activeFilters(),kind).map(row=>row.map(safe).join(',')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  const link=document.createElement('a');link.href=url;link.download=`${kind}-${filters.month}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const link=document.createElement('a');link.href=url;link.download=`${kind}-${screen()==='control-end'?plantDate():filters.month}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 filtersForm.addEventListener('submit',event=>{
   event.preventDefault();const values=Object.fromEntries(new FormData(filtersForm));
-  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(values.month))return;
+  if(screen()!=='control-end'&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(values.month))return;
   filters={...filters,...values};saveFilters();render();
 });
 for (const key of ['line','product']) filtersForm.elements[key].addEventListener('change',()=>{
@@ -176,10 +188,13 @@ content.addEventListener('submit',event=>{
   const values=Object.fromEntries(new FormData(form));
   try{
     if(form.id==='control-form'){
-      for(const key of ['target','line_off','kanban','opening_stock','oem_requirement']) values[key]=values[key]?.trim()?Number(values[key]):NaN;
-      values.running=form.elements.running.checked;service.saveControl(filters,values);
-    }else if(form.id==='alert-form') service.saveAlert(filters,values); else return;
-    render();message(form.id==='control-form'?'Today’s Shop Floor names and target published. Values saved in this browser.':'Alert dispatched and timestamped in this browser.');
+      for(const key of ['target','line_off','kanban']) values[key]=values[key]?.trim()?Number(values[key]):NaN;
+      values.running=form.elements.running.checked;service.saveControl(activeFilters(),values);
+    }else if(form.id==='monthly-form'){
+      for(const key of ['opening_stock','oem_requirement'])values[key]=values[key]?.trim()?Number(values[key]):NaN;
+      service.saveMonthly(activeFilters(),values);
+    }else if(form.id==='alert-form') service.saveAlert(activeFilters(),values); else return;
+    render();message(form.id==='control-form'?'Today’s daily values saved and Shop Floor updated.':form.id==='monthly-form'?'Monthly settings saved. No daily re-entry is needed.':'Alert dispatched and timestamped in this browser.');
   }catch(error){message(error.name==='QuotaExceededError'||error.name==='SecurityError'?'Unable to save. Allow browser storage or free space, then try again.':error.message,true);}
 });
 window.addEventListener('hashchange',()=>{if(service){document.getElementById('message').hidden=true;render();}});
@@ -201,6 +216,6 @@ async function init(){
   if(!service.repo.persistent)document.getElementById('storage-note').textContent='Browser storage is unavailable or invalid. Allow storage to save changes.';
   render();
   setInterval(()=>{if(screen()==='shop-floor'){service.repo.sync();render();}},30000);
-  setInterval(()=>{if(screen()==='shop-floor'){if(displayedFloorDate!==plantDate()){service.repo.sync();render();}else updateFloorClock();}},1000);
+  setInterval(()=>{if(screen()==='control-end'&&displayedControlDate!==plantDate()){service.repo.sync();render();}if(screen()==='shop-floor'){if(displayedFloorDate!==plantDate()){service.repo.sync();render();}else updateFloorClock();}},1000);
 }
 init().catch(error=>{content.innerHTML=`<section class="panel"><h2>Unable to load dashboard</h2><p>${esc(error.message)}</p><p>Serve the public folder over HTTP, or refresh your Vercel deployment.</p></section>`;});

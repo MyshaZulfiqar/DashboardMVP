@@ -158,55 +158,62 @@ export class ProductionService {
       production:null,downtime_minutes:null,oee:null};
   }
   controlInitial(filters) {
-    const model = this.models(filters)[0];
-    if (!model || this.models(filters).length !== 1) return null;
-    const rows = this.monthRows(filters);
-    const row = rows.filter(r=>r.actual>0).at(-1) || rows[0];
-    const plan = this.data.plans.find(p=>p.model_id===model.id && p.month.startsWith(filters.month));
-    const machine = this.machines(filters)[0];
-    const assignment=this.data.floor_display;
-    const floorTarget=assignment?.date===plantDate()&&assignment.model_id===model.id?assignment.target:0;
-    return {target:floorTarget, line_off:row?.line_off||0, kanban:row?.kanban||0, opening_stock:plan?.opening_stock||0,
-      oem_requirement:plan?.oem_requirement||0, status:machine?.status||'unknown', running:machine?.running??null, stop_reason:machine?.stop_reason||'', effective_date:row?.date||`${filters.month}-01`};
+    const models=this.models(filters);
+    if(models.length!==1)return null;
+    const model=models[0],today=plantDate(),month=today.slice(0,7);
+    const row=this.data.daily.find(r=>r.model_id===model.id&&r.date===today&&r.recorded_at);
+    const plan=this.data.plans.find(p=>p.model_id===model.id&&p.month===`${month}-01`&&p.controller_set_at);
+    const machine=this.machines(filters).find(m=>m.updated_at&&plantDate(new Date(m.updated_at))===today);
+    return {target:row?.target??0,line_off:row?.line_off??0,kanban:row?.kanban??0,
+      opening_stock:plan?.opening_stock??0,oem_requirement:plan?.oem_requirement??0,
+      monthly_locked:Boolean(plan),monthly_set_at:plan?.controller_set_at||null,
+      status:machine?.status||'unknown',running:machine?.running??null,stop_reason:machine?.stop_reason||'',
+      effective_date:today,month};
   }
-  saveControl(filters, values) {
-    const models = this.models(filters);
-    if (models.length !== 1) throw new Error('Select one product and model before saving.');
-    for (const key of ['target','line_off','kanban','opening_stock','oem_requirement']) {
-      if (!Number.isSafeInteger(values[key]) || values[key] < 0 || values[key] > 1000000000) throw new Error('Enter whole numbers from 0 to 1,000,000,000.');
+  saveMonthly(filters,values) {
+    const models=this.models(filters);
+    if(models.length!==1)throw new Error('Select one product and model before saving.');
+    for(const key of ['opening_stock','oem_requirement']) {
+      if(!Number.isSafeInteger(values[key])||values[key]<0||values[key]>1000000000)throw new Error('Enter whole numbers from 0 to 1,000,000,000.');
     }
-    if (!['unknown','running','stopped','maintenance'].includes(values.status)) throw new Error('Choose a valid line status.');
-    if (values.running && values.status !== 'running') throw new Error('A running machine requires Running status.');
-    if (values.status!=='unknown' && (!values.running || values.status !== 'running') && !values.stop_reason.trim()) throw new Error('Enter a reason when the machine is stopped.');
-    if (values.stop_reason.length>200) throw new Error('Stop reason must be 200 characters or fewer.');
-    const modelId = models[0].id, now = new Date().toISOString(), effectiveDate = this.controlInitial(filters).effective_date;
-    this.repo.transact(state => {
-      let row = state.daily.find(r=>r.model_id===modelId && r.date===effectiveDate);
-      if (!row) {
-        const day = Number(effectiveDate.slice(-2));
-        row={id:crypto.randomUUID(),model_id:modelId,date:effectiveDate,excel_week:Math.floor((day-1+(new Date(`${filters.month}-01T00:00:00Z`).getUTCDay()+6)%7)/7)+1,target:0,line_off:0,kanban:0,actual:0,good:null,rejected:null,delivered:0,planned_minutes:null,downtime_minutes:null,ideal_cycle_seconds:null,predicted_downtime_minutes:null};
+    this.repo.sync();
+    const modelId=models[0].id,now=new Date().toISOString(),month=`${plantDate().slice(0,7)}-01`;
+    if(this.data.plans.some(p=>p.model_id===modelId&&p.month===month&&p.controller_set_at))throw new Error('Monthly settings are already saved for this model. They unlock at the start of the next month.');
+    this.repo.transact(state=>{
+      let plan=state.plans.find(p=>p.model_id===modelId&&p.month===month);
+      if(!plan){plan={id:crypto.randomUUID(),model_id:modelId,month,assumed_efficiency:null};state.plans.push(plan);}
+      Object.assign(plan,{...values,controller_set_at:now,updated_at:now});
+      state.entries.push({id:crypto.randomUUID(),model_id:modelId,created_at:now,payload:{...values,entry_type:'monthly_setup',effective_date:month}});
+    });
+  }
+  saveControl(filters,values) {
+    const models=this.models(filters);
+    if(models.length!==1)throw new Error('Select one product and model before saving.');
+    for(const key of ['target','line_off','kanban']) {
+      if(!Number.isSafeInteger(values[key])||values[key]<0||values[key]>1000000000)throw new Error('Enter whole numbers from 0 to 1,000,000,000.');
+    }
+    if(!['unknown','running','stopped','maintenance'].includes(values.status))throw new Error('Choose a valid line status.');
+    if(values.running&&values.status!=='running')throw new Error('A running machine requires Running status.');
+    if(values.status!=='unknown'&&(!values.running||values.status!=='running')&&!values.stop_reason.trim())throw new Error('Enter a reason when the machine is stopped.');
+    if(values.stop_reason.length>200)throw new Error('Stop reason must be 200 characters or fewer.');
+    const modelId=models[0].id,now=new Date().toISOString(),effectiveDate=plantDate(new Date(now));
+    this.repo.sync();
+    this.repo.transact(state=>{
+      let row=state.daily.find(r=>r.model_id===modelId&&r.date===effectiveDate);
+      if(!row){
+        const day=Number(effectiveDate.slice(-2)),month=effectiveDate.slice(0,7);
+        row={id:crypto.randomUUID(),model_id:modelId,date:effectiveDate,excel_week:Math.floor((day-1+(new Date(`${month}-01T00:00:00Z`).getUTCDay()+6)%7)/7)+1,target:0,line_off:0,kanban:0,actual:0,good:null,rejected:null,delivered:0,planned_minutes:null,downtime_minutes:null,ideal_cycle_seconds:null,predicted_downtime_minutes:null};
         state.daily.push(row);
       }
-      Object.assign(row,{line_off:values.line_off,kanban:values.kanban,delivered:values.kanban,recorded_at:now});
-      let plan=state.plans.find(p=>p.model_id===modelId && p.month.startsWith(filters.month));
-      if (!plan) { plan={id:crypto.randomUUID(),model_id:modelId,month:`${filters.month}-01`,assumed_efficiency:null}; state.plans.push(plan); }
-      Object.assign(plan,{opening_stock:values.opening_stock,oem_requirement:values.oem_requirement,updated_at:now});
-      // Maintain the workbook's cross-month inventory carry-forward after manual edits.
-      let closing=plan.opening_stock+sum(state.daily.filter(r=>r.model_id===modelId&&r.date.startsWith(filters.month)),'actual')-sum(state.daily.filter(r=>r.model_id===modelId&&r.date.startsWith(filters.month)),'delivered');
-      const following=state.plans.filter(p=>p.model_id===modelId&&p.month>plan.month).sort((a,b)=>a.month.localeCompare(b.month));
-      for(const next of following) {
-        next.opening_stock=closing;
-        const monthRows=state.daily.filter(r=>r.model_id===modelId&&r.date.startsWith(next.month.slice(0,7)));
-        closing+=sum(monthRows,'actual')-sum(monthRows,'delivered');
-      }
-      if (values.status !== 'unknown') {
+      Object.assign(row,{target:values.target,line_off:values.line_off,kanban:values.kanban,delivered:values.kanban,recorded_at:now});
+      if(values.status!=='unknown'){
         let machine=state.machines.find(m=>m.model_id===modelId);
-        if (!machine) { machine={id:crypto.randomUUID(),model_id:modelId,name:`Operator station · ${this.label(modelId).model}`,running:null,stopped_at:null}; state.machines.push(machine); }
-        if (!values.running && machine.running!==false) machine.stopped_at=now;
+        if(!machine){machine={id:crypto.randomUUID(),model_id:modelId,name:`Operator station · ${this.label(modelId).model}`,running:null,stopped_at:null};state.machines.push(machine);}
+        if(!values.running&&(machine.running!==false||!machine.updated_at||plantDate(new Date(machine.updated_at))!==effectiveDate))machine.stopped_at=now;
         Object.assign(machine,{running:values.running,status:values.status,stop_reason:values.stop_reason||machine.stop_reason||'',source:'operator',updated_at:now});
       }
-      state.floor_display={date:plantDate(),model_id:modelId,identity:this.label(modelId),target:values.target,updated_at:now};
-      state.entries.push({id:crypto.randomUUID(),model_id:modelId,created_at:now,payload:{...values,effective_date:effectiveDate,shop_floor_date:plantDate()}});
+      state.floor_display={date:effectiveDate,model_id:modelId,identity:this.label(modelId),target:values.target,updated_at:now};
+      state.entries.push({id:crypto.randomUUID(),model_id:modelId,created_at:now,payload:{target:values.target,line_off:values.line_off,kanban:values.kanban,status:values.status,running:values.running,stop_reason:values.stop_reason,effective_date:effectiveDate,shop_floor_date:effectiveDate}});
     });
   }
   saveAlert(filters, values) {
