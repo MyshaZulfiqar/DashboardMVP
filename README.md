@@ -28,7 +28,7 @@ Alternatively, with Vercel CLI installed and authenticated, run `vercel` from th
 ## Screens
 
 - **Line Metrics:** five KPI cards, OEE breakdown, target/actual and downtime charts, weekly donuts, machine status and active/resolved alerts.
-- **Shop Floor:** large production metrics, machine-running count, progress, downtime and manual stop reasons. Refreshes every 30 seconds and syncs changes between tabs of the same origin.
+- **Shop Floor:** filter-free floor display with line/product/model names and a Pakistan Standard Time day/date/clock. Target, production, OEE, downtime and stops use today only, regardless of report month/quarter/week. Choose line/product/model on another screen (or in the URL) before opening Shop Floor; an unselected model displays the model names and aggregates only today’s records for those models. Saved data refreshes every 30 seconds, the clock ticks every second, and the day automatically rolls over at midnight in Pakistan. No current-day records shows “No data for today”; missing values remain TBD, including OEE rather than the historical 80% assumption. The Jan–Oct workbook has no November records. This static browser-local demo has no live plant connection.
 - **Control End:** validated production settings, manual machine status, alert dispatch, resolution and dated CSV downloads.
 - **AI Analytics:** Coming Soon / On Hold placeholder.
 
@@ -77,7 +77,7 @@ CSV exports follow the chosen period and filters. Daily rows and operator audit 
 - Attainment = actual production / production target. It can change after an operator edits the plan; the scenario assumption remains labeled separately.
 - OEE is only computed when all required operating-time, cycle-time and quality inputs are known: Availability × Performance × Quality. Until then it is TBD.
 - Workbook weeks follow Monday–Sunday, including partial first/last weeks. Week counts are derived from each month; August has W6. Calendar grouping labels the same groups by Monday start date. Quarter charts group daily records across month boundaries by Monday date.
-- All screens, KPIs and exports follow Month / Quarter / Week. Weekly target is the sum of that week's Line Off. Weekly opening inventory includes prior movements in the month. Quarter opening is the first month's opening balance; it is never the sum of monthly opening balances. Closing inventory reconciles across months.
+- Reporting screens, KPIs and exports follow Month / Quarter / Week. Shop Floor always follows the current Pakistan date instead. Weekly target is the sum of that week's Line Off. Weekly opening inventory includes prior movements in the month. Quarter opening is the first month's opening balance; it is never the sum of monthly opening balances. Closing inventory reconciles across months.
 - Q4 is explicitly partial (October only). November and December have no source data.
 - Production/Delivered/Backlog donuts use available weekly quantities. Production includes remaining target; Delivered includes remaining OEM. Backlog donut shows weekly dispatch shortfalls, which may differ from the monthly net-backlog KPI.
 

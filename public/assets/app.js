@@ -1,4 +1,4 @@
-import {ProductionRepository, ProductionService, STORAGE_KEY} from './data.js';
+import {ProductionRepository, ProductionService, STORAGE_KEY, plantDate} from './data.js';
 
 const titles = {'shop-floor':'Shop Floor','control-end':'Control End','line-metrics':'Line Metrics','ai-analytics':'AI Analytics'};
 const content = document.getElementById('content');
@@ -83,8 +83,33 @@ function drawCharts(summary) {
   }
 }
 function floorView(s) {
-  content.innerHTML=`<div class="live-label"><span class="${s.machine_count&&s.running===s.machine_count?'green':'muted'}">● ${s.machine_count?'OPERATOR STATUS REPORTED':'MACHINE STATUS: TBD'}</span><span>Refreshes every 30 seconds · ${esc(periodLabel())}</span></div><section class="floor-hero panel"><div><p>Target production</p><strong>${n(s.target)}</strong><span>units · selected period</span></div><div><p>Actual production</p><strong class="${s.remaining?'red':'green'}">${n(s.actual)}</strong><span>units · ${pct(s.attainment)} of target</span></div><div><p>Overall efficiency · assumed</p><strong>${pct(s.assumed_efficiency)}</strong><span>Measured OEE: ${pct(s.oee)} · Machines Running: <b>${n(s.running)} / ${n(s.machine_count)}</b> reported</span></div><div class="progress-row"><progress aria-label="Production progress" max="100" value="${Math.min(100,s.attainment)}"></progress><span>Production progress</span></div></section><section class="panel downtime"><div><p>Downtime · selected period</p><strong>${n(s.downtime_minutes)}</strong><small>Not supplied in workbook</small></div><div><p>Last stop</p><strong class="stop-detail">${s.last_stop?`${dateTime(s.last_stop.stopped_at)} — ${esc(s.last_stop.stop_reason)}`:'TBD — no stop details supplied'}</strong><small>Source: operator manual entry when available</small></div></section><section class="production-status"><h2>ⓘ Production status</h2><p class="${s.remaining?'red':'green'}">${s.has_data?(s.remaining?`${n(s.remaining)} units remain to reach the target.`:'Target achieved. Production is on track.'):'No production records in this selection.'}</p><small>The 80% efficiency is an assumption; OEE factors remain TBD. Browser demo refreshed; changes sync between tabs on this browser.</small></section>`;
+  const models=service.models(filters);
+  const identities=models.map(model=>service.label(model.id));
+  const names=field=>[...new Set(identities.map(identity=>identity[field]))].join(', ')||'TBD';
+  const hasData=s.has_data;
+  content.innerHTML=`<section class="floor-context panel" aria-label="Shop floor context">
+    <div><small>Line</small><strong>${esc(names('line'))}</strong></div>
+    <div><small>Product</small><strong>${esc(names('product'))}</strong></div>
+    <div><small>Model${models.length===1?'':'s'}</small><strong>${esc(names('model'))}</strong></div>
+    <div class="floor-date"><small>Day &amp; date · Pakistan Standard Time</small><strong id="floor-date"></strong><time id="floor-time"></time></div>
+  </section><div class="live-label"><span>● TODAY ONLY · ${esc(plantDate())}</span><span>Data refreshes every 30 seconds</span></div>
+  <section class="floor-hero panel"><div><p>Target plan · today</p><strong id="floor-target">${n(hasData?s.target:null)}</strong><span>units · current day only</span></div>
+  <div><p>Production · today</p><strong id="floor-production" class="${hasData?(s.remaining?'red':'green'):''}">${n(hasData?s.actual:null)}</strong><span>units · ${pct(hasData?s.attainment:null)} of today's target</span></div>
+  <div><p>OEE · today</p><strong id="floor-oee">${pct(s.oee)}</strong><span>Availability ${pct(s.availability)} · Performance ${pct(s.performance)} · Quality ${pct(s.quality)}</span><small>Machines Running: ${n(s.running)} / ${n(s.machine_count)} reported today</small></div>
+  <div class="progress-row"><progress aria-label="Today's production progress" max="100" value="${hasData?Math.min(100,s.attainment):0}"></progress><span>Today's production progress</span></div></section>
+  <section class="panel downtime"><div><p>Downtime · today</p><strong id="floor-downtime">${n(s.downtime_minutes)}${s.downtime_minutes===null?'':' min'}</strong><small>${s.downtime_minutes===null?'No downtime data available for today':'Current day only'}</small></div><div><p>Last stop · today</p><strong class="stop-detail">${s.last_stop?`${dateTime(s.last_stop.stopped_at)} — ${esc(s.last_stop.stop_reason)}`:'TBD — no stop reported today'}</strong><small>Source: operator manual entry when available</small></div></section>
+  <section class="production-status"><h2>ⓘ Production status</h2><p class="${hasData?(s.remaining?'red':'green'):''}">${hasData?(s.remaining?`${n(s.remaining)} units remain to reach today's target.`:"Today's target achieved. Production is on track."):'No data for today'}</p><small>Only records dated today in Pakistan Standard Time are shown. Missing OEE and downtime inputs remain TBD. This browser-local demo refreshes saved data; no live plant feed is connected.</small></section>`;
+  updateFloorClock();
 }
+function updateFloorClock() {
+  const clock=document.getElementById('floor-time');
+  if(!clock)return;
+  const now=new Date();
+  document.getElementById('floor-date').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Karachi',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(now);
+  clock.dateTime=now.toISOString();
+  clock.textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Karachi',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now);
+}
+let displayedFloorDate=null;
 function numberInput(name,label,value) {
   return `<p><label for="${name}">${label}</label><input id="${name}" name="${name}" type="number" min="0" max="1000000000" step="1" value="${value}" required></p>`;
 }
@@ -95,12 +120,16 @@ function controlView() {
 function render() {
   while(charts.length) charts.pop().destroy();
   renderFilters();
-  const current=screen(),summary=service.summary(filters);
+  const current=screen();
+  const isFloor=current==='shop-floor';
+  displayedFloorDate=isFloor?plantDate():null;
+  const summary=service.summary(isFloor?{...filters,month:displayedFloorDate.slice(0,7),period:'day',date:displayedFloorDate}:filters);
+  filtersForm.hidden=isFloor;
+  document.getElementById('storage-note').hidden=isFloor;
   document.title=`${titles[current]} · TSB PRODUCTION`;
   document.getElementById('page-title').textContent=titles[current];
   document.getElementById('updated').textContent=`Updated ${dateTime(new Date().toISOString())}`;
   document.querySelectorAll('nav a').forEach(a=>{a.classList.toggle('selected',a.hash===`#${current}`);if(a.hash===`#${current}`)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  renderFilters();
   if(current==='line-metrics') metricsView(summary);
   else if(current==='shop-floor') floorView(summary);
   else if(current==='control-end') controlView();
@@ -174,5 +203,6 @@ async function init(){
   if(!service.repo.persistent)document.getElementById('storage-note').textContent='Browser storage is unavailable or invalid. Allow storage to save changes.';
   render();
   setInterval(()=>{if(screen()==='shop-floor'){service.repo.sync();render();}},30000);
+  setInterval(()=>{if(screen()==='shop-floor'){if(displayedFloorDate!==plantDate()){service.repo.sync();render();}else updateFloorClock();}},1000);
 }
 init().catch(error=>{content.innerHTML=`<section class="panel"><h2>Unable to load dashboard</h2><p>${esc(error.message)}</p><p>Serve the public folder over HTTP, or refresh your Vercel deployment.</p></section>`;});

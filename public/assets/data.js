@@ -1,5 +1,10 @@
 /** Data boundary: replace this repository with a remote API without changing UI components. */
 export const STORAGE_KEY = 'tsb-production-mvp2-workbook-v2';
+export function plantDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Karachi',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+  const value = type => parts.find(part => part.type === type).value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
 const isoDay = date => date.toISOString().slice(0, 10);
 const monday = value => {
   const day = new Date(`${value}T00:00:00Z`);
@@ -52,6 +57,10 @@ export class ProductionService {
     return [...new Set(this.monthRows(filters).map(row => row.excel_week))].sort((a,b) => a-b);
   }
   rows(filters) {
+    if (filters.period === 'day') {
+      const ids = this.models(filters).map(model => model.id);
+      return this.data.daily.filter(row => ids.includes(row.model_id) && row.date === filters.date);
+    }
     if (filters.period === 'quarter') {
       const [year, month] = filters.month.split('-').map(Number);
       const start = Math.floor((month-1)/3)*3+1;
@@ -94,13 +103,13 @@ export class ProductionService {
     for (const key of ['good','rejected','planned_minutes','downtime_minutes']) total[key] = knownSum(rows,key);
     // Opening inventory is a balance, not a quantity to sum over successive months.
     let opening = sum(plans.filter(p=>p.month.startsWith(months[0] || filters.month)), 'opening_stock');
-    if (filters.period==='week' && rows.length) {
+    if (['week','day'].includes(filters.period) && rows.length) {
       const firstDate=rows[0].date;
       const prior=this.monthRows(filters).filter(row=>row.date<firstDate);
       opening += sum(prior,'actual')-sum(prior,'delivered');
     }
-    const oem=filters.period==='week' ? total.target : sum(plans,'oem_requirement');
-    const machines=this.machines(filters);
+    const oem=['week','day'].includes(filters.period) ? total.target : sum(plans,'oem_requirement');
+    const machines=this.machines(filters).filter(machine => filters.period!=='day' || (machine.updated_at && plantDate(new Date(machine.updated_at))===filters.date));
     const factorsKnown=rows.length && rows.every(r=>['planned_minutes','downtime_minutes','ideal_cycle_seconds','good','rejected'].every(k=>Number.isFinite(r[k])));
     let availability=null,performance=null,quality=null,oee=null;
     if (factorsKnown) {
@@ -118,7 +127,7 @@ export class ProductionService {
       downtime_hours:total.downtime_minutes===null?null:total.downtime_minutes/60,
       running:machines.length?machines.filter(m=>m.running).length:null,machine_count:machines.length||null,
       unreported_models:ids.filter(id=>!machines.some(m=>m.model_id===id)).length,
-      last_stop:machines.filter(m=>m.stopped_at).sort((a,b)=>b.stopped_at.localeCompare(a.stopped_at))[0]||null};
+      last_stop:machines.filter(m=>m.stopped_at && (filters.period!=='day' || plantDate(new Date(m.stopped_at))===filters.date)).sort((a,b)=>b.stopped_at.localeCompare(a.stopped_at))[0]||null};
   }
   charts(filters) {
     const rows=this.rows(filters), buckets=new Map();
