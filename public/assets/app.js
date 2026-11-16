@@ -14,6 +14,16 @@ let filters = {line:'',product:'',model:'',month:'2026-10',period:'month',groupi
 let alertState = 'active';
 let screen = () => Object.hasOwn(titles,location.hash.slice(1)) ? location.hash.slice(1) : 'line-metrics';
 
+function showLoadingScreen() {
+  const loading=document.getElementById('loading-screen');
+  if(!loading)return;
+  const title=titles[screen()];
+  loading.textContent=`Loading ${title}`;
+  document.getElementById('page-title').textContent=title;
+  document.getElementById('updated').textContent=`Loading ${title}`;
+  document.title=`${title} · TSB PRODUCTION`;
+}
+
 function message(text,error=false) {
   const element=document.getElementById('message');
   element.hidden=false; element.className=`message ${error?'error':''}`;element.textContent=text;
@@ -197,10 +207,11 @@ content.addEventListener('submit',event=>{
     render();message(form.id==='control-form'?'Today’s daily values saved and Shop Floor updated.':form.id==='monthly-form'?'Monthly settings saved. No daily re-entry is needed.':'Alert dispatched and timestamped in this browser.');
   }catch(error){message(error.name==='QuotaExceededError'||error.name==='SecurityError'?'Unable to save. Allow browser storage or free space, then try again.':error.message,true);}
 });
-window.addEventListener('hashchange',()=>{if(service){document.getElementById('message').hidden=true;render();}});
+window.addEventListener('hashchange',()=>{if(service){document.getElementById('message').hidden=true;render();}else showLoadingScreen();});
 window.addEventListener('storage',event=>{if(service&&event.key===STORAGE_KEY){service.repo.sync();render();}});
 
 async function init(){
+  showLoadingScreen();
   try{const theme=localStorage.getItem('tsb-theme');if(['dark','light'].includes(theme))document.documentElement.dataset.theme=theme;}catch{}
   const response=await fetch('/data/demo.json');if(!response.ok)throw new Error('Demo data could not be loaded.');
   service=new ProductionService(new ProductionRepository(await response.json()));
