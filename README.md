@@ -62,7 +62,7 @@ Serving or deploying the site still requires **no Python or dependencies**. The 
 
 Actual production is exactly **80% of Line Off** for every imported model/month. The separate **Overall Efficiency** value is explicitly labeled **assumed**, not measured OEE. OEE, Availability, Performance, Quality, good/rejected quantities, downtime, predicted downtime, machine inventory, running flags, stop details and historical alerts were not supplied; they remain **TBD**, not zero or invented data. Downtime and quality chart containers show placeholders instead of misleading charts. Original entry timestamps are also TBD; workbook dates remain available in exports.
 
-Hose, Tube & HVAC are combined in the source. The product filter therefore offers the combined group rather than inventing individual-product quantities. Model and line filtering still work. Future individual products can be added with actual product-level records.
+Hose, Tube & HVAC are combined in the source. The AC product remains combined; no individual-product quantities are invented. The catalog additionally offers the supplied vehicle/model variants. Those variant options have no historical quantities until values are entered for them.
 
 **Persistence is browser-local.** Control settings and alerts use `localStorage`; they are not shared between users, devices, preview URLs or production domains. The workbook dataset has its own versioned storage key. Previous October-only demo entries are retained under the old key and cannot override the new seed. Clearing site data resets the demo. Blocked/full storage produces a visible save error. No authentication or server-side database is included.
 
@@ -107,3 +107,9 @@ Validation reconciles all 40 model/months and monthly aggregates with the popula
 ### Shop Floor controller workflow
 
 On Control End, select line, combined product and one model, enter **Shop Floor Target · today**, and press **Set Value**. This atomically saves today's daily controls and a date-stamped floor assignment with fixed identity and target. Changing filters or navigating away without saving does not publish anything. Monthly opening stock/OEM are saved separately once per model/month; daily saves neither require nor overwrite them. After midnight, floor names remain fixed and the target returns to TBD until today's controller save. Production, downtime and OEE remain placeholders until IoT is connected. `ProductionService.floorSnapshot` is the separate floor data boundary; historical report rows are never used as live input.
+
+### Line/product/variant catalog
+
+`public/data/catalog.json` is the independent option catalog. It adds HE PROD → CSM/ECM (8 variants), AC PROD → Hose, Tube & HVAC (12 variants), and EC PROD → Starter / Alternator (2 variants each). Vehicle families appear in model labels, without a fourth filter. The four original workbook aggregate models remain available and explicitly labeled, preserving their records without allocating totals to variants.
+
+The repository merges the latest catalog by stable IDs both on startup and storage synchronization. Existing browser-local entries, locked monthly settings and published floor targets are preserved; clearing browser storage is not required to see new options. The workbook import script regenerates historical data independently and does not overwrite the catalog. New variants can be selected in Control End to save daily/monthly values and publish the fixed floor identity/target. No production, downtime or OEE is fabricated.

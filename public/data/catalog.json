@@ -1,0 +1,208 @@
+{
+  "lines": [
+    {
+      "id": 1,
+      "name": "AC PROD"
+    },
+    {
+      "id": 2,
+      "name": "HE PROD"
+    },
+    {
+      "id": 3,
+      "name": "EC PROD"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "line_id": 1,
+      "name": "Hose, Tube & HVAC"
+    },
+    {
+      "id": 2,
+      "line_id": 2,
+      "name": "CSM/ECM"
+    },
+    {
+      "id": 3,
+      "line_id": 3,
+      "name": "Starter"
+    },
+    {
+      "id": 4,
+      "line_id": 3,
+      "name": "Alternator"
+    }
+  ],
+  "models": [
+    {
+      "id": 1,
+      "product_id": 1,
+      "name": "558D",
+      "source": "workbook aggregate"
+    },
+    {
+      "id": 2,
+      "product_id": 1,
+      "name": "046D",
+      "source": "workbook aggregate"
+    },
+    {
+      "id": 3,
+      "product_id": 1,
+      "name": "481D",
+      "source": "workbook aggregate"
+    },
+    {
+      "id": 4,
+      "product_id": 1,
+      "name": "164D",
+      "source": "workbook aggregate"
+    },
+    {
+      "id": 5,
+      "product_id": 2,
+      "name": "CSM COROLLA 178B -1.8 MT",
+      "vehicle": "Corolla"
+    },
+    {
+      "id": 6,
+      "product_id": 2,
+      "name": "(6430J) ECM ASSY YARIS 1.3/1.5",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 7,
+      "product_id": 2,
+      "name": "RADIATOR ASSY 481D MT 561",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 8,
+      "product_id": 2,
+      "name": "RADIATOR ASSY 481D AT 551",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 9,
+      "product_id": 2,
+      "name": "ECM COROLLA CROSS (164D)",
+      "vehicle": "Cross"
+    },
+    {
+      "id": 10,
+      "product_id": 2,
+      "name": "Y4J Radiator 640589.AET306",
+      "vehicle": "Alto"
+    },
+    {
+      "id": 11,
+      "product_id": 1,
+      "name": "(448006-178B) Corolla 1.6 AT / 1.8 MT",
+      "vehicle": "Corolla"
+    },
+    {
+      "id": 12,
+      "product_id": 1,
+      "name": "(448002-178B) COROLA 1.8 SR-CVT AuTo",
+      "vehicle": "Corolla"
+    },
+    {
+      "id": 13,
+      "product_id": 1,
+      "name": "A/C 046D YARIS 1.3 -MT",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 14,
+      "product_id": 1,
+      "name": "A/C 046D YARIS 1.3 -CVT",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 15,
+      "product_id": 1,
+      "name": "A/C 046D YARIS 1.5 -CVT",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 16,
+      "product_id": 1,
+      "name": "KD LOW - 481D",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 17,
+      "product_id": 1,
+      "name": "481D-AIRCON IMV GD MID",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 18,
+      "product_id": 1,
+      "name": "(448003-481D) IMV GD HIGH SPECS",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 19,
+      "product_id": 1,
+      "name": "(448004-481D) TR HIGH - (Fortuner)",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 20,
+      "product_id": 1,
+      "name": "(448005-481D) IMV IV GD High TR AT",
+      "vehicle": "IMV"
+    },
+    {
+      "id": 21,
+      "product_id": 1,
+      "name": "Corolla CROSS (HV)",
+      "vehicle": "Cross"
+    },
+    {
+      "id": 22,
+      "product_id": 1,
+      "name": "COROLA CROSS LO-GL",
+      "vehicle": "Cross"
+    },
+    {
+      "id": 23,
+      "product_id": 3,
+      "name": "Starter Assy 1.6 / 1.8 ZR",
+      "vehicle": "Corolla"
+    },
+    {
+      "id": 24,
+      "product_id": 3,
+      "name": "(5700) STARTER ASSY 046D 1.3/1.5",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 25,
+      "product_id": 4,
+      "name": "ALTERNATOR ASSY 1.8 MT 2ZR",
+      "vehicle": "Corolla"
+    },
+    {
+      "id": 26,
+      "product_id": 4,
+      "name": "ALTERNATOR ASSY (046D)",
+      "vehicle": "Yaris"
+    },
+    {
+      "id": 27,
+      "product_id": 2,
+      "name": "YLA Radiator 660514 AVK310",
+      "vehicle": "Cultus"
+    },
+    {
+      "id": 28,
+      "product_id": 2,
+      "name": "(HR200DH3CB05) RAD ASY- H100",
+      "vehicle": "HR Poter"
+    }
+  ]
+}

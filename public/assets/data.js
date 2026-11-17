@@ -16,13 +16,26 @@ const knownSum = (rows, field) => rows.length && rows.every(row => Number.isFini
 const percent = (a, b) => b ? 100 * a / b : 0;
 
 export class ProductionRepository {
-  constructor(seed) {
+  constructor(seed, catalog = null) {
+    this.catalog=catalog;
     this.state = structuredClone(seed);
     this.persistent = true;
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (stored?.version === seed.version && ['lines','products','models','plans','daily','machines','alerts','entries'].every(key => Array.isArray(stored[key]))) this.state = stored;
     } catch { this.persistent = false; }
+    this.mergeCatalog();
+  }
+  mergeCatalog() {
+    if(!this.catalog)return;
+    // Refresh the catalog independently of saved production, controller settings and alerts.
+    for(const table of ['lines','products','models']) {
+      for(const item of this.catalog[table]) {
+        const existing=this.state[table].find(row=>row.id===item.id);
+        if(existing)Object.assign(existing,structuredClone(item));
+        else this.state[table].push(structuredClone(item));
+      }
+    }
   }
   persist() {
     // Don't silently pretend a write was saved when storage is unavailable.
@@ -39,6 +52,7 @@ export class ProductionRepository {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (stored?.version === this.state.version && Array.isArray(stored.daily)) this.state = stored;
     } catch { /* Keep the last valid in-memory snapshot. */ }
+    this.mergeCatalog();
   }
 }
 
